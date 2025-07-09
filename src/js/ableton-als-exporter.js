@@ -1,6 +1,37 @@
+/**
+ * ableton-als-exporter.js
+ * A self-contained, single-file JavaScript library for creating Ableton Live Set (.als) files.
+ *
+ * Author: Aftab Hussain
+ *
+ * Licensed under the MIT License.
+ * Source code available at: https://github.com/afta8/ableton-project-stager
+ *
+ * This module is designed for a client-side web application environment
+ * and depends on 'jszip' and 'pako', which are expected to be available
+ * in the host application.
+ */
+
 import JSZip from 'jszip';
 import pako from 'pako';
-import { sanitizeXml } from './utils.js';
+
+
+/**
+ * Sanitizes a string for safe inclusion in XML by escaping special characters.
+ * @param {string} str The string to sanitize.
+ * @returns {string} The sanitized string.
+ */
+function sanitizeXml(str) {
+    if (typeof str !== 'string') return '';
+    return str.replace(/&/g, '&amp;')
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;')
+              .replace(/"/g, '&quot;')
+              .replace(/'/g, '&apos;');
+}
+
+
+// --- Main Library Class ---
 
 export class AbletonAlsExporter {
     constructor() {
@@ -8,27 +39,25 @@ export class AbletonAlsExporter {
         this.nextId = 20000;
         this.scenes = [];
         this.tracks = [];
-        this.clips = new Map(); // Using a Map to store clips by "sceneIndex-trackIndex"
+        this.clips = new Map();
         this.audioFiles = new Map();
     }
 
     setTempo(bpm) {
         this.projectTempo = bpm;
     }
-    
+
     addScene(scene) {
         this.scenes.push(scene);
     }
-    
+
     addTrack(track) {
         this.tracks.push(track);
     }
-    
+
     addClip(sceneIndex, trackIndex, clipData) {
         const key = `${sceneIndex}-${trackIndex}`;
         this.clips.set(key, clipData);
-        
-        // Store the audio file only once using its name as the key
         if (clipData.file && !this.audioFiles.has(clipData.name)) {
             this.audioFiles.set(clipData.name, clipData.file);
         }
@@ -150,7 +179,7 @@ export class AbletonAlsExporter {
         const tracksXml = this.tracks.map((track, index) => this._generateTrackXml(track, index)).join('\n');
         const masterTrackXml = this._generateMasterTrackXml();
         const scenesXml = this._generateScenesXml();
-        this.nextId = this.nextId + this.tracks.length * this.scenes.length * 2; // Increment NextPointeeId
+        this.nextId = this.nextId + this.tracks.length * this.scenes.length * 2;
    
         return `<?xml version="1.0" encoding="UTF-8"?>
 <Ableton MajorVersion="5" MinorVersion="12.0_12203" SchemaChangeCount="3" Creator="Ableton Project Stager">
