@@ -2,7 +2,7 @@ import { appState, addNewScene, addClipsToScene } from './state.js';
 import { findClosestAbletonColorIndex } from './utils.js';
 import { render, showNotification } from './ui.js';
 import { playScene } from './audio.js';
-import { exportProject as exportAlsProject } from './export.js';
+import { exportProject } from './abletonAlsExporterController.js';
 
 // --- DOM ELEMENTS CACHE ---
 const dom = {
@@ -95,20 +95,7 @@ function handleClipControlEvents(e) {
 }
 
 async function handleExport() {
-    const allClips = appState.grid.flat().filter(c => c);
-    if (allClips.length === 0) {
-        showNotification("Cannot export an empty project. Please add audio clips.", 4000);
-        return;
-    }
-    
-    showNotification("Generating project...", 2000);
-    try {
-        await exportAlsProject();
-        setTimeout(() => showNotification("Project exported successfully!", 3000), 500);
-    } catch (error) {
-        console.error("Export failed:", error);
-        showNotification("An error occurred during export. Check the console.", 4000);
-    }
+    await exportProject();
 }
 
 // --- INITIALIZATION ---
