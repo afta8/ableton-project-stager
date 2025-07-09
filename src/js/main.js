@@ -2,7 +2,7 @@ import { appState, addNewScene, addClipsToScene } from './state.js';
 import { findClosestAbletonColorIndex } from './utils.js';
 import { render, showNotification } from './ui.js';
 import { playScene } from './audio.js';
-import { exportProject } from './abletonAlsExporterController.js';
+import { exportProject } from './abletonAlsExporterController.js'; // <-- UPDATED IMPORT
 
 // --- DOM ELEMENTS CACHE ---
 const dom = {
@@ -44,7 +44,6 @@ function handleSceneEvents(e) {
 
     const sceneIndex = parseInt(sceneItem.dataset.sceneIndex, 10);
     
-    // Handle play button click
     const playBtn = target.closest('.scene-play-btn');
     if (playBtn) {
         e.stopPropagation();
@@ -52,23 +51,25 @@ function handleSceneEvents(e) {
         return;
     }
     
-    // Handle scene name change
     const nameInput = target.closest('.scene-name-input');
     if (nameInput) {
         appState.scenes[sceneIndex].name = nameInput.value;
-        return; // No full re-render needed for text input
+        return;
     }
     
-    // Handle color change
     const colorPicker = target.closest('.scene-color-picker');
     if (colorPicker) {
-        const closestIndex = findClosestAbletonColorIndex(colorPicker.value);
+        const hexColor = colorPicker.value; // Get the raw hex color
+        const closestIndex = findClosestAbletonColorIndex(hexColor);
+        
+        // Store both the index and the raw hex color in the state
         appState.scenes[sceneIndex].colorIndex = closestIndex;
-        render(); // Re-render to show the snapped color
+        appState.scenes[sceneIndex].hexColor = hexColor; // <-- STORE THE HEX
+        
+        render();
         return;
     }
 
-    // Handle scene selection (if not clicking a control)
     appState.selectedSceneIndex = sceneIndex;
     render();
 }
@@ -94,6 +95,7 @@ function handleClipControlEvents(e) {
     }
 }
 
+// UPDATED handleExport
 async function handleExport() {
     await exportProject();
 }
@@ -119,7 +121,7 @@ function init() {
     console.log("Ableton Project Stager Initialized.");
     setupEventListeners();
     addNewScene();
-    render(); // This is the crucial fix!
+    render();
 }
 
 init();

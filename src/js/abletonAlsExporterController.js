@@ -17,11 +17,13 @@ export async function exportProject() {
         // 1. Set global project properties
         exporter.setTempo(appState.projectTempo);
 
-        // 2. Add tracks
+        // 2. Add tracks from the app state
         appState.tracks.forEach(track => exporter.addTrack(track));
 
-        // 3. Add scenes
-        appState.scenes.forEach(scene => exporter.addScene(scene));
+        // 3. Add scenes, passing the name and the user-selected hex color
+        appState.scenes.forEach(scene => {
+            exporter.addScene({ name: scene.name, colorHex: scene.hexColor });
+        });
 
         // 4. Add all clips from the grid
         appState.grid.forEach((sceneRow, sceneIndex) => {
@@ -32,7 +34,7 @@ export async function exportProject() {
             });
         });
 
-        // 5. Generate the final zip blob
+        // 5. Generate the final zip blob from the library
         const zipBlob = await exporter.generateProjectZip();
 
         // 6. Trigger the download
