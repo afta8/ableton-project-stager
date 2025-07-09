@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ableton Project Stager</title>
+    <!-- ADD THIS SCRIPT TAG -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <header>
+      <h1 class="text-2xl font-bold tracking-wider">Ableton Project Stager</h1>
+      <div class="global-controls flex items-center gap-4">
+        <div class="flex items-center gap-2">
+          <label for="project-tempo" class="mb-0 text-gray-400">Project Tempo:</label>
+          <input type="number" id="project-tempo" class="input-field w-24" value="120">
+        </div>
+        <button id="export-button" class="btn">Export Project</button>
+      </div>
+    </header>
+
+    <div class="main-container">
+      <aside class="scenes-panel">
+        <h2 class="text-xl font-semibold mb-4 border-b border-gray-600 pb-2">Scenes</h2>
+        <div id="scenes-list"></div>
+        <button id="add-scene-button" class="btn btn-secondary w-full mt-auto">Add Empty Scene</button>
+      </aside>
+
+      <main class="clip-grid-container">
+        <div id="grid-scroll-wrapper">
+          <div id="track-headers" class="clip-grid"></div>
+          <div id="clip-grid" class="clip-grid"></div>
+        </div>
+        <div class="mt-auto pt-4 text-center flex-shrink-0">
+          <button id="upload-audio-button" class="btn text-lg px-8 py-3">Upload Audio to New Scene</button>
+          <input type="file" id="audio-file-input" multiple accept="audio/*" class="hidden">
+        </div>
+      </main>
+    </div>
+    
+    <div id="notification-toast"></div>
+
+    <script type="module" src="/src/js/main.js"></script>
+  </body>
+</html>
