@@ -1,10 +1,21 @@
+/**
+ * main.js
+ *
+ * The main entry point for the Ableton Project Stager application.
+ * This file is responsible for:
+ * - Caching DOM elements.
+ * - Setting up all event listeners for user interaction.
+ * - Initializing the application state and rendering the initial UI.
+ */
+
 import { appState, addNewScene, addClipsToScene } from './state.js';
-import { findClosestAbletonColorIndex } from './utils.js';
 import { render, showNotification } from './ui.js';
 import { playScene } from './audio.js';
-import { exportProject as exportAlsProject } from './export.js';
+import { exportProject } from './abletonAlsExporterController.js';
+import { AbletonAlsExporter } from './ableton-als-exporter.js';
 
 // --- DOM ELEMENTS CACHE ---
+// Caching frequently accessed DOM elements for better performance.
 const dom = {
     tempoInput: document.getElementById('project-tempo'),
     addSceneBtn: document.getElementById('add-scene-button'),
@@ -16,6 +27,7 @@ const dom = {
 };
 
 // --- EVENT HANDLERS ---
+
 function handleProjectTempoChange(e) {
     appState.projectTempo = parseInt(e.target.value, 10);
 }
@@ -25,6 +37,7 @@ async function handleFileUpload(e) {
     if (files.length === 0) return;
 
     let targetSceneIndex = appState.selectedSceneIndex;
+    // If no scene is selected, create a new one to upload the files to.
     if (targetSceneIndex === -1) {
         addNewScene();
         targetSceneIndex = appState.scenes.length - 1;
@@ -37,6 +50,11 @@ async function handleFileUpload(e) {
     render();
 }
 
+/**
+ * Handles all events within the scenes list using event delegation.
+ * This includes scene selection, play/stop, name changes, and color changes.
+ * @param {Event} e - The event object.
+ */
 function handleSceneEvents(e) {
     const target = e.target;
     const sceneItem = target.closest('.scene-item');
@@ -46,33 +64,45 @@ function handleSceneEvents(e) {
     
     // Handle play button click
     const playBtn = target.closest('.scene-play-btn');
-    if (playBtn) {
-        e.stopPropagation();
+    if (playBtn && e.type === 'click') {
+        e.stopPropagation(); // Prevent the scene selection from firing.
         playScene(sceneIndex);
         return;
     }
     
-    // Handle scene name change
+    // Handle scene name change (on blur, which is part of the 'change' event for inputs)
     const nameInput = target.closest('.scene-name-input');
     if (nameInput) {
         appState.scenes[sceneIndex].name = nameInput.value;
-        return; // No full re-render needed for text input
+        return; // No re-render needed for simple text input.
     }
     
-    // Handle color change
+    // Handle color picker change - only fire on the 'change' event.
     const colorPicker = target.closest('.scene-color-picker');
-    if (colorPicker) {
-        const closestIndex = findClosestAbletonColorIndex(colorPicker.value);
-        appState.scenes[sceneIndex].colorIndex = closestIndex;
-        render(); // Re-render to show the snapped color
+    if (colorPicker && e.type === 'change') {
+        const userHexColor = colorPicker.value;
+        // Ask the library for the correct corresponding Ableton color.
+        const abletonHexColor = AbletonAlsExporter.getNearestAbletonColor(userHexColor);
+        
+        // Update the state with the snapped Ableton color.
+        appState.scenes[sceneIndex].hexColor = abletonHexColor;
+        
+        render(); // Re-render to show the snapped color.
         return;
     }
 
-    // Handle scene selection (if not clicking a control)
-    appState.selectedSceneIndex = sceneIndex;
-    render();
+    // Handle scene selection on click (but not if clicking a control).
+    if (e.type === 'click' && !playBtn && !nameInput && !colorPicker) {
+        appState.selectedSceneIndex = sceneIndex;
+        render();
+    }
 }
 
+/**
+ * Handles all 'change' events within the clip grid using event delegation.
+ * This includes updates to a clip's BPM, warp mode, and loop status.
+ * @param {Event} e - The event object.
+ */
 function handleClipControlEvents(e) {
     const target = e.target;
     const sceneIndex = target.dataset.sceneIndex;
@@ -85,8 +115,9 @@ function handleClipControlEvents(e) {
 
     if (target.classList.contains('clip-bpm')) {
         clip.bpm = parseFloat(target.value) || 120.00;
+        // Recalculate length in beats when BPM changes.
         clip.lengthInBeats = parseFloat((clip.duration * (clip.bpm / 60)).toFixed(2));
-        render();
+        render(); // Re-render to show the new length.
     } else if (target.classList.contains('clip-warp')) {
         clip.warpMode = parseInt(target.value, 10);
     } else if (target.classList.contains('clip-loop')) {
@@ -94,24 +125,18 @@ function handleClipControlEvents(e) {
     }
 }
 
+/**
+ * A wrapper function to call the exporter controller.
+ */
 async function handleExport() {
-    const allClips = appState.grid.flat().filter(c => c);
-    if (allClips.length === 0) {
-        showNotification("Cannot export an empty project. Please add audio clips.", 4000);
-        return;
-    }
-    
-    showNotification("Generating project...", 2000);
-    try {
-        await exportAlsProject();
-        setTimeout(() => showNotification("Project exported successfully!", 3000), 500);
-    } catch (error) {
-        console.error("Export failed:", error);
-        showNotification("An error occurred during export. Check the console.", 4000);
-    }
+    await exportProject();
 }
 
 // --- INITIALIZATION ---
+
+/**
+ * Sets up all the application's event listeners.
+ */
 function setupEventListeners() {
     dom.tempoInput.addEventListener('change', handleProjectTempoChange);
     dom.addSceneBtn.addEventListener('click', () => {
@@ -122,17 +147,21 @@ function setupEventListeners() {
     dom.audioFileInput.addEventListener('change', handleFileUpload);
     dom.exportBtn.addEventListener('click', handleExport);
 
+    // Using event delegation on the parent containers for efficiency.
     dom.scenesList.addEventListener('click', handleSceneEvents);
     dom.scenesList.addEventListener('change', handleSceneEvents); 
-    
     dom.clipGrid.addEventListener('change', handleClipControlEvents);
 }
 
+/**
+ * The main initialization function for the application.
+ */
 function init() {
     console.log("Ableton Project Stager Initialized.");
     setupEventListeners();
-    addNewScene();
-    render(); // This is the crucial fix!
+    addNewScene(); // Start with one empty scene.
+    render();
 }
 
+// Start the application.
 init();

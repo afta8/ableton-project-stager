@@ -21,7 +21,7 @@ export function addNewScene() {
     appState.scenes.push({
         id: sceneId,
         name: `Scene ${appState.scenes.length + 1}`,
-        colorIndex: 5
+        hexColor: '#d3f78f' // Default hex for index 5
     });
     appState.grid.push(new Array(appState.tracks.length).fill(null));
     appState.selectedSceneIndex = appState.scenes.length - 1;
@@ -51,7 +51,7 @@ export async function addClipsToScene(files, targetSceneIndex) {
             };
         }
     }
-    return validAudioFiles.length < files.length; // Return true if some files were ignored
+    return validAudioFiles.length < files.length;
 }
 
 function getAudioDuration(file) {
