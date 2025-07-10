@@ -75,22 +75,37 @@ function findClosestAbletonColorIndex(hexColor) {
 
 // --- Main Library Class ---
 
+/**
+ * A class for programmatically creating Ableton Live Set (.als) files.
+ */
 export class AbletonAlsExporter {
+    /**
+     * Initializes a new, empty project structure.
+     */
     constructor() {
         this.projectTempo = 120;
-        this.nextId = 20000;
+        this.nextId = 20000; // Initial seed for generating unique IDs within the .als file
         this.scenes = [];
         this.tracks = [];
-        this.clips = new Map();
-        this.audioFiles = new Map();
+        this.clips = new Map(); // Using a Map to store clips by "sceneIndex-trackIndex"
+        this.audioFiles = new Map(); // Stores audio file data to prevent duplicates
     }
 
     // --- Static Methods ---
     
+    /**
+     * Retrieves the available Warp Modes for clips.
+     * @returns {object} An object mapping Warp Mode IDs to their names.
+     */
     static getWarpModes() {
         return WARP_MODES;
     }
 
+    /**
+     * Finds the closest color in the official Ableton palette for a given hex color.
+     * @param {string} hexColor - The user-selected hex color (e.g., '#FF0000').
+     * @returns {string} The closest matching Ableton color as a hex string.
+     */
     static getNearestAbletonColor(hexColor) {
         const index = findClosestAbletonColorIndex(hexColor);
         return ABLETON_COLOR_PALETTE[index];
@@ -98,42 +113,72 @@ export class AbletonAlsExporter {
 
     // --- Public API Methods ---
 
+    /**
+     * Sets the project's global tempo.
+     * @param {number} bpm - The tempo in beats per minute.
+     */
     setTempo(bpm) {
         this.projectTempo = bpm;
     }
 
+    /**
+     * Adds a scene to the project.
+     * @param {object} options - The scene options.
+     * @param {string} options.name - The name of the scene.
+     * @param {string} [options.colorHex] - The color of the scene as a hex string.
+     */
     addScene({ name, colorHex }) {
         const colorIndex = findClosestAbletonColorIndex(colorHex);
         this.scenes.push({ name, colorIndex, id: this._getUniqueId() });
     }
 
-    addTrack(track) {
-        this.tracks.push({ ...track, id: this._getUniqueId() });
+    /**
+     * Adds an audio track to the project.
+     * @param {object} trackData - The track data.
+     * @param {string} trackData.name - The name of the track.
+     */
+    addTrack(trackData) {
+        this.tracks.push({ ...trackData, id: this._getUniqueId() });
     }
 
+    /**
+     * Adds an audio clip to a specific slot in the session grid.
+     * @param {number} sceneIndex - The zero-based index of the scene (row).
+     * @param {number} trackIndex - The zero-based index of the track (column).
+     * @param {object} clipData - The clip data, including file, bpm, loop status, etc.
+     */
     addClip(sceneIndex, trackIndex, clipData) {
         const key = `${sceneIndex}-${trackIndex}`;
         const clipWithId = { ...clipData, id: this._getUniqueId() };
         this.clips.set(key, clipWithId);
 
+        // Store the audio file only once using its name as a key to avoid duplicates
         if (clipData.file && !this.audioFiles.has(clipData.name)) {
             this.audioFiles.set(clipData.name, clipData.file);
         }
     }
 
+    /**
+     * Generates the complete Ableton Live project as a .zip archive.
+     * @returns {Promise<Blob>} A promise that resolves with the complete project file as a Blob.
+     */
     async generateProjectZip() {
         const projectName = `Project-${Date.now()}`;
         const zip = new JSZip();
         const projectFolder = zip.folder(projectName);
 
+        // Create the standard Ableton project folder structure
         projectFolder.folder("Ableton Project Info");
-
         const samplesFolder = projectFolder.folder("Samples/Imported");
+        
+        // Add all unique audio files to the samples folder
         for (const [name, file] of this.audioFiles.entries()) {
             samplesFolder.file(sanitizeXml(name), file);
         }
 
+        // Generate the main .als file XML content
         const xmlString = this._generateAlsXml();
+        // Gzip the XML content, as required by the .als format
         const gzippedXml = pako.gzip(xmlString);
         projectFolder.file(`${projectName}.als`, gzippedXml);
 
@@ -142,13 +187,24 @@ export class AbletonAlsExporter {
 
     // --- Private Methods ---
 
+    /**
+     * Gets a new unique ID for XML elements.
+     * @returns {number}
+     * @private
+     */
     _getUniqueId() {
         return this.nextId++;
     }
 
+    /**
+     * Generates the XML for a single clip slot.
+     * @private
+     */
     _generateClipXml(sceneIndex, trackIndex) {
         const key = `${sceneIndex}-${trackIndex}`;
         const clip = this.clips.get(key);
+        // The Id of a ClipSlot must be the zero-based index of the scene it corresponds to.
+        // This is a critical requirement for avoiding "Slot Count Mismatch" errors.
         const clipSlotId = sceneIndex;
 
         if (!clip) {
@@ -193,8 +249,14 @@ export class AbletonAlsExporter {
         `;
     }
 
+    /**
+     * Generates the XML for a full audio track, including all its clip slots.
+     * @private
+     */
     _generateTrackXml(track, trackIndex) {
         const clipSlots = this.scenes.map((_, sceneIndex) => this._generateClipXml(sceneIndex, trackIndex)).join('\n');
+        // Every track requires a <FreezeSequencer> block with the same number of empty clip slots
+        // as the <MainSequencer>. This is mandatory for file integrity.
         const emptyClipSlots = this.scenes.map((_, sceneIndex) => `<ClipSlot Id="${sceneIndex}"><LomId Value="0"/><ClipSlot><Value/></ClipSlot><HasStop Value="true"/></ClipSlot>`).join('\n');
 
         return `
@@ -225,6 +287,10 @@ export class AbletonAlsExporter {
         `;
     }
 
+    /**
+     * Generates the XML for the master track.
+     * @private
+     */
     _generateMasterTrackXml() {
         return `
             <MainTrack>
@@ -240,6 +306,10 @@ export class AbletonAlsExporter {
         `;
     }
 
+    /**
+     * Generates the XML for the PreHear (cue) track.
+     * @private
+     */
     _generatePreHearTrackXml() {
         return `
             <PreHearTrack>
@@ -254,6 +324,10 @@ export class AbletonAlsExporter {
         `;
     }
     
+    /**
+     * Generates the XML for all scene definitions.
+     * @private
+     */
     _generateScenesXml() {
         const sceneContent = this.scenes.map((scene, index) => `
             <Scene Id="${index}">
@@ -267,12 +341,18 @@ export class AbletonAlsExporter {
         return `<Scenes>${sceneContent}</Scenes>`;
     }
 
+    /**
+     * Assembles the full XML string for the .als file.
+     * @private
+     */
     _generateAlsXml() {
         const tracksXml = this.tracks.map((track, index) => this._generateTrackXml(track, index)).join('\n');
         const masterTrackXml = this._generateMasterTrackXml();
         const preHearTrackXml = this._generatePreHearTrackXml();
         const scenesXml = this._generateScenesXml();
 
+        // The structure of this final XML document follows the "full structural replication"
+        // approach derived from a known-good ground truth file. All wrapper elements are required.
         return `<?xml version="1.0" encoding="UTF-8"?>
 <Ableton MajorVersion="5" MinorVersion="12.0_12203" SchemaChangeCount="3" Creator="Ableton Project Stager">
     <LiveSet>

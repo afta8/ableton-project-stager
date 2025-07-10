@@ -1,3 +1,12 @@
+/**
+ * ui.js
+ *
+ * This module is responsible for all direct DOM manipulation.
+ * It contains all the functions that render the application's user interface
+ * based on the current `appState`. It reads from the state but does not
+ * modify it directly.
+ */
+
 import { appState } from './state.js';
 import { AbletonAlsExporter } from './ableton-als-exporter.js';
 
@@ -10,13 +19,25 @@ let notificationTimeout;
 
 // --- Module-Specific Helpers ---
 
+/**
+ * Sanitizes a string for safe inclusion in HTML attributes or XML.
+ * @param {string} str The string to sanitize.
+ * @returns {string} The sanitized string.
+ */
 function sanitizeXml(str) {
     if (typeof str !== 'string') return '';
-    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+    return str.replace(/&/g, '&amp;')
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;')
+              .replace(/"/g, '&quot;') // Corrected this line
+              .replace(/'/g, '&apos;');
 }
 
 // --- Render Functions ---
 
+/**
+ * The main render function. Calls all other render functions to update the entire UI.
+ */
 export function render() {
     renderTrackHeaders();
     renderScenes();
@@ -24,6 +45,9 @@ export function render() {
     renderUploadButton();
 }
 
+/**
+ * Renders the track headers at the top of the grid.
+ */
 function renderTrackHeaders() {
     trackHeaders.innerHTML = '';
     appState.tracks.forEach(track => {
@@ -31,13 +55,15 @@ function renderTrackHeaders() {
     });
 }
 
+/**
+ * Renders the list of scenes in the left-hand panel.
+ */
 function renderScenes() {
     scenesList.innerHTML = '';
     appState.scenes.forEach((scene, index) => {
         const isSelected = index === appState.selectedSceneIndex;
         const isPlaying = appState.playingSceneIndex === index;
         
-        // Use the single hexColor from the state for everything
         const sceneColorHex = scene.hexColor || '#a9a9a9';
 
         scenesList.innerHTML += `
@@ -52,6 +78,9 @@ function renderScenes() {
     });
 }
 
+/**
+ * Renders the main clip grid, including empty slots and populated clips with their controls.
+ */
 export function renderGrid() {
     clipGrid.innerHTML = '';
     const WARP_MODES = AbletonAlsExporter.getWarpModes();
@@ -95,6 +124,9 @@ export function renderGrid() {
     });
 }
 
+/**
+ * Renders the main "Upload Audio" button, enabling or disabling it based on scene selection.
+ */
 function renderUploadButton() {
     if (appState.selectedSceneIndex !== -1) {
         uploadAudioBtn.textContent = 'Upload Audio to Selected Scene';
@@ -105,6 +137,11 @@ function renderUploadButton() {
     }
 }
 
+/**
+ * Shows a temporary notification message at the bottom of the screen.
+ * @param {string} message - The message to display.
+ * @param {number} [duration=3000] - The duration in milliseconds.
+ */
 export function showNotification(message, duration = 3000) {
     clearTimeout(notificationTimeout);
     notificationToast.textContent = message;
