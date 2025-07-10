@@ -1,8 +1,8 @@
 import { appState, addNewScene, addClipsToScene } from './state.js';
-import { findClosestAbletonColorIndex } from './utils.js';
 import { render, showNotification } from './ui.js';
 import { playScene } from './audio.js';
-import { exportProject } from './abletonAlsExporterController.js'; // <-- UPDATED IMPORT
+import { exportProject } from './abletonAlsExporterController.js';
+import { AbletonAlsExporter } from './ableton-als-exporter.js';
 
 // --- DOM ELEMENTS CACHE ---
 const dom = {
@@ -44,34 +44,38 @@ function handleSceneEvents(e) {
 
     const sceneIndex = parseInt(sceneItem.dataset.sceneIndex, 10);
     
+    // Handle play button click
     const playBtn = target.closest('.scene-play-btn');
-    if (playBtn) {
+    if (playBtn && e.type === 'click') {
         e.stopPropagation();
         playScene(sceneIndex);
         return;
     }
     
+    // Handle scene name change
     const nameInput = target.closest('.scene-name-input');
     if (nameInput) {
         appState.scenes[sceneIndex].name = nameInput.value;
         return;
     }
     
+    // Handle color picker change - ONLY on the 'change' event
     const colorPicker = target.closest('.scene-color-picker');
-    if (colorPicker) {
-        const hexColor = colorPicker.value; // Get the raw hex color
-        const closestIndex = findClosestAbletonColorIndex(hexColor);
+    if (colorPicker && e.type === 'change') {
+        const userHexColor = colorPicker.value;
+        const abletonHexColor = AbletonAlsExporter.getNearestAbletonColor(userHexColor);
         
-        // Store both the index and the raw hex color in the state
-        appState.scenes[sceneIndex].colorIndex = closestIndex;
-        appState.scenes[sceneIndex].hexColor = hexColor; // <-- STORE THE HEX
+        appState.scenes[sceneIndex].hexColor = abletonHexColor;
         
         render();
         return;
     }
 
-    appState.selectedSceneIndex = sceneIndex;
-    render();
+    // Handle scene selection on click (but not if clicking a control)
+    if (e.type === 'click' && !playBtn && !nameInput && !colorPicker) {
+        appState.selectedSceneIndex = sceneIndex;
+        render();
+    }
 }
 
 function handleClipControlEvents(e) {
@@ -95,7 +99,6 @@ function handleClipControlEvents(e) {
     }
 }
 
-// UPDATED handleExport
 async function handleExport() {
     await exportProject();
 }
@@ -111,6 +114,7 @@ function setupEventListeners() {
     dom.audioFileInput.addEventListener('change', handleFileUpload);
     dom.exportBtn.addEventListener('click', handleExport);
 
+    // These listeners handle multiple event types on the same parent element
     dom.scenesList.addEventListener('click', handleSceneEvents);
     dom.scenesList.addEventListener('change', handleSceneEvents); 
     

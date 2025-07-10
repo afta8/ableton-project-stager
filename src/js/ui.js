@@ -1,6 +1,5 @@
 import { appState } from './state.js';
-import { WARP_MODES, ABLETON_COLOR_PALETTE } from './constants.js';
-import { sanitizeXml } from './utils.js';
+import { AbletonAlsExporter } from './ableton-als-exporter.js';
 
 const scenesList = document.getElementById('scenes-list');
 const clipGrid = document.getElementById('clip-grid');
@@ -8,6 +7,15 @@ const trackHeaders = document.getElementById('track-headers');
 const uploadAudioBtn = document.getElementById('upload-audio-button');
 const notificationToast = document.getElementById('notification-toast');
 let notificationTimeout;
+
+// --- Module-Specific Helpers ---
+
+function sanitizeXml(str) {
+    if (typeof str !== 'string') return '';
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+}
+
+// --- Render Functions ---
 
 export function render() {
     renderTrackHeaders();
@@ -28,7 +36,9 @@ function renderScenes() {
     appState.scenes.forEach((scene, index) => {
         const isSelected = index === appState.selectedSceneIndex;
         const isPlaying = appState.playingSceneIndex === index;
-        const sceneColorHex = ABLETON_COLOR_PALETTE[scene.colorIndex] || '#a9a9a9';
+        
+        // Use the single hexColor from the state for everything
+        const sceneColorHex = scene.hexColor || '#a9a9a9';
 
         scenesList.innerHTML += `
             <div class="scene-item ${isSelected ? 'selected' : ''}" data-scene-index="${index}" style="border-left-color: ${sceneColorHex};">
@@ -42,9 +52,10 @@ function renderScenes() {
     });
 }
 
-// Added 'export' keyword here
 export function renderGrid() {
     clipGrid.innerHTML = '';
+    const WARP_MODES = AbletonAlsExporter.getWarpModes();
+
     appState.grid.forEach((sceneRow, sceneIndex) => {
         sceneRow.forEach((clip, trackIndex) => {
             let content = 'Empty';

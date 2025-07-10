@@ -20,7 +20,7 @@ export async function exportProject() {
         // 2. Add tracks from the app state
         appState.tracks.forEach(track => exporter.addTrack(track));
 
-        // 3. Add scenes, passing the name and the user-selected hex color
+        // 3. Add scenes, passing the snapped hex color to the library
         appState.scenes.forEach(scene => {
             exporter.addScene({ name: scene.name, colorHex: scene.hexColor });
         });

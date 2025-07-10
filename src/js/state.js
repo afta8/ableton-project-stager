@@ -1,5 +1,3 @@
-import { ABLETON_COLOR_PALETTE } from './constants.js';
-
 export const appState = {
     projectTempo: 120,
     nextId: 20000,
@@ -20,12 +18,10 @@ function getUniqueId() {
 
 export function addNewScene() {
     const sceneId = getUniqueId();
-    const defaultColorIndex = 5;
     appState.scenes.push({
         id: sceneId,
         name: `Scene ${appState.scenes.length + 1}`,
-        colorIndex: defaultColorIndex,
-        hexColor: ABLETON_COLOR_PALETTE[defaultColorIndex] // Add default hex color
+        hexColor: '#d3f78f' // Default hex for index 5
     });
     appState.grid.push(new Array(appState.tracks.length).fill(null));
     appState.selectedSceneIndex = appState.scenes.length - 1;

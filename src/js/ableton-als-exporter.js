@@ -15,7 +15,11 @@
 import JSZip from 'jszip';
 import pako from 'pako';
 
-// --- Internal Constants & Helpers ---
+// --- Internal Constants & Helpers (Encapsulated) ---
+
+const WARP_MODES = {
+    0: 'Beats', 1: 'Tones', 2: 'Texture', 3: 'Re-Pitch', 4: 'Complex'
+};
 
 const ABLETON_COLOR_PALETTE = {
     0: '#f78f8f', 1: '#f7b08f', 2: '#f7c88f', 3: '#f7e08f', 4: '#f3f78f',
@@ -81,6 +85,19 @@ export class AbletonAlsExporter {
         this.audioFiles = new Map();
     }
 
+    // --- Static Methods ---
+    
+    static getWarpModes() {
+        return WARP_MODES;
+    }
+
+    static getNearestAbletonColor(hexColor) {
+        const index = findClosestAbletonColorIndex(hexColor);
+        return ABLETON_COLOR_PALETTE[index];
+    }
+
+    // --- Public API Methods ---
+
     setTempo(bpm) {
         this.projectTempo = bpm;
     }
@@ -122,6 +139,8 @@ export class AbletonAlsExporter {
 
         return zip.generateAsync({ type: 'blob' });
     }
+
+    // --- Private Methods ---
 
     _getUniqueId() {
         return this.nextId++;
